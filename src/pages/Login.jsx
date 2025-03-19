@@ -29,31 +29,37 @@ function Login() {
 
     try {
       // First attempt to sign in
-      const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) throw signInError;
-      if (!user) throw new Error('No user returned from login');
+      if (!data.user) throw new Error('No user returned from login');
 
       try {
         // Then fetch the user's role
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', data.user.id)
           .single();
 
         if (userError) {
           console.error('Error fetching user role:', userError);
-          // If we can't get the role, default to regular user access
+          // If we can't get the role, log the error but still navigate to dashboard
+          // This prevents 500 errors from blocking the UI
           navigate('/user/dashboard');
           return;
         }
 
         // Navigate based on role
-        navigate(userData?.role === 'admin' ? '/admin' : '/user/dashboard');
+        if (userData && userData.role) {
+          navigate(userData.role === 'admin' ? '/admin' : '/user/dashboard');
+        } else {
+          console.warn('User role not found, defaulting to user dashboard');
+          navigate('/user/dashboard');
+        }
       } catch (roleError) {
         console.error('Error checking user role:', roleError);
         // If role check fails, default to regular user access

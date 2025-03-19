@@ -2,26 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Card, CardContent, CardHeader } from '../../../components/ui/card';
-import { Badge } from '../../../components/ui/badge';
-import { Skeleton } from '../../../components/ui/skeleton';
+import { Card, CardHeader, CardContent } from '../../components/ui/application-card';
+import { Badge } from '../../components/ui/badge';
+import { Skeleton } from '../../components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 export default function UserDashboard() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Get the current user
     async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Error fetching user:', error);
+          setError('You need to be logged in to view this page');
+          navigate('/login');
+          return;
+        }
+        
+        if (!data.user) {
+          console.error('No user found');
+          setError('You need to be logged in to view this page');
+          navigate('/login');
+          return;
+        }
+        
+        setUser(data.user);
+      } catch (error) {
+        console.error('Error in getUser:', error);
+        setError('Failed to authenticate user');
+        navigate('/login');
+      }
     }
     
     getUser();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     async function fetchApplications() {
@@ -125,8 +148,21 @@ export default function UserDashboard() {
 }
 
 function ApplicationCard({ application, statusColor }) {
+  // Check if job data exists and has the expected format
+  if (!application || !application.jobs) {
+    return (
+      <Card className="overflow-hidden hover:shadow-md transition">
+        <CardContent className="pt-6">
+          <div className="text-center text-gray-500">
+            <p>Application data is incomplete</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const job = application.jobs;
-  const company = job.companies;
+  const company = job.companies || { name: 'Unknown Company', logo_url: null };
   
   return (
     <Card className="overflow-hidden hover:shadow-md transition">
@@ -145,12 +181,12 @@ function ApplicationCard({ application, statusColor }) {
               </div>
             )}
             <div>
-              <h3 className="font-semibold line-clamp-1">{job.title}</h3>
+              <h3 className="font-semibold line-clamp-1">{job.title || 'Untitled Position'}</h3>
               <p className="text-sm text-gray-500">{company.name}</p>
             </div>
           </div>
           <Badge className={`${statusColor} capitalize`}>
-            {application.status}
+            {application.status || 'Unknown'}
           </Badge>
         </div>
       </CardHeader>
@@ -161,19 +197,19 @@ function ApplicationCard({ application, statusColor }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            {job.location}
+            {job.location || 'Remote'}
           </div>
           <div className="flex items-center text-gray-500">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            {job.type}
+            {job.type || 'Full-time'}
           </div>
           <div className="flex items-center text-gray-500">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Applied {formatDistanceToNow(new Date(application.created_at))} ago
+            Applied {application.created_at ? formatDistanceToNow(new Date(application.created_at)) + ' ago' : 'recently'}
           </div>
         </div>
         <div className="mt-4 flex justify-between">

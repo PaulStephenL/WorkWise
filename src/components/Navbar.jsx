@@ -1,28 +1,65 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 function Navbar() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Error getting auth user:', error);
+          setUser(null);
+        } else {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Unexpected error in fetchUser:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          setUser(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+
     fetchUser();
+
+    // Cleanup listener on unmount
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const handleLogout = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
+      navigate('/');
       console.log('User logged out successfully');
     } catch (error) {
       console.error('Error logging out:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
