@@ -41,27 +41,16 @@ function SignUp() {
       if (signUpError) throw signUpError;
       if (!user) throw new Error('No user data returned');
 
-      // Create the user profile - this might fail if the user isn't fully created yet,
-      // but that's okay because we'll try again in the AuthCallback
-      try {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            name: fullName,
-            email: email,
-            role: 'user'
-          });
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          // Don't throw here - the user can still be created successfully
-        }
-      } catch (profileError) {
-        console.error('Error in profile creation:', profileError);
-        // Don't throw here either
-      }
-
+      // Store the password temporarily in sessionStorage to help with verification flow
+      // This will be used in the auth callback if needed and then removed
+      sessionStorage.setItem('temp_signup_email', email);
+      sessionStorage.setItem('temp_signup_password', password);
+      // Set a timeout to clear this sensitive data (5 minutes)
+      setTimeout(() => {
+        sessionStorage.removeItem('temp_signup_email');
+        sessionStorage.removeItem('temp_signup_password');
+      }, 5 * 60 * 1000);
+      
       // Show success message
       setSuccess(true);
       // Clear form
@@ -96,7 +85,9 @@ function SignUp() {
 
         {success && (
           <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-400 text-green-700">
-            <p>Registration successful! Please check your email to confirm your account.</p>
+            <p className="font-medium">Registration successful!</p>
+            <p className="mt-2">Please check your email to confirm your account. Your account will be fully created after you verify your email.</p>
+            <p className="mt-2">If you don't see the email, check your spam folder.</p>
             <p className="mt-2">After confirming your email, you can <button onClick={() => navigate('/login')} className="text-green-800 underline">login here</button>.</p>
           </div>
         )}

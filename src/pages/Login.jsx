@@ -40,7 +40,7 @@ function Login() {
       try {
         // Then fetch the user's role
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single();
