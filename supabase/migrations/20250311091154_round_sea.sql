@@ -6,14 +6,14 @@
     - company_admins: Link companies with admin users
     - jobs: Store job listings
     - applications: Track job applications
-    - users: Link with auth.users and store additional user data
+    - profiles: Link with auth.users and store additional user data
 
   2. Security
     - Enable RLS on all tables
     - Add policies for public access, authenticated users, and admins
 
   3. Note: Users must be created through Supabase Auth first
-    - The users table will be populated when users sign up through the auth system
+    - The profiles table will be populated when users sign up through the auth system
 */
 
 -- Create companies table if it doesn't exist
@@ -59,32 +59,22 @@ CREATE TABLE IF NOT EXISTS applications (
   UNIQUE(job_id, user_id)
 );
 
--- Create or update users table safely
-DO $$ 
-BEGIN
-  -- Create users table if it doesn't exist
-  CREATE TABLE IF NOT EXISTS users (
-    id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name text NOT NULL,
-    email text UNIQUE NOT NULL,
-    resume_url text,
-    role text DEFAULT 'user'
-  );
-  
-  -- Add role column if it doesn't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'users' AND column_name = 'role'
-  ) THEN
-    ALTER TABLE users ADD COLUMN role text DEFAULT 'user';
-  END IF;
-END $$;
+-- Create profiles table
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  resume_url TEXT,
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- Enable Row Level Security (RLS) on tables
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Companies are viewable by everyone" ON companies;
@@ -94,15 +84,17 @@ DROP POLICY IF EXISTS "Jobs are manageable by admin" ON jobs;
 DROP POLICY IF EXISTS "Users can view their own applications" ON applications;
 DROP POLICY IF EXISTS "Users can create applications" ON applications;
 DROP POLICY IF EXISTS "Applications are manageable by admin" ON applications;
-DROP POLICY IF EXISTS "Users can view their own profile" ON users;
-DROP POLICY IF EXISTS "Users can update their own profile" ON users;
-DROP POLICY IF EXISTS "Admins can view all profiles" ON users;
-DROP POLICY IF EXISTS "Users can read their own profile" ON users;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Service role can insert any profile" ON public.profiles;
+DROP POLICY IF EXISTS "Public can select profiles" ON public.profiles;
 
 -- Create policies
 CREATE POLICY "Companies are viewable by everyone" 
   ON companies FOR SELECT 
-  TO public 
+  TO public, authenticated
   USING (true);
 
 CREATE POLICY "Companies are manageable by admin" 
@@ -110,15 +102,15 @@ CREATE POLICY "Companies are manageable by admin"
   TO authenticated 
   USING (
     EXISTS (
-      SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
-        AND users.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+        AND profiles.role = 'admin'
     )
   );
 
 CREATE POLICY "Jobs are viewable by everyone" 
   ON jobs FOR SELECT 
-  TO public 
+  TO public, authenticated
   USING (true);
 
 CREATE POLICY "Jobs are manageable by admin" 
@@ -126,9 +118,9 @@ CREATE POLICY "Jobs are manageable by admin"
   TO authenticated 
   USING (
     EXISTS (
-      SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
-        AND users.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+        AND profiles.role = 'admin'
     )
   );
 
@@ -147,38 +139,61 @@ CREATE POLICY "Applications are manageable by admin"
   TO authenticated 
   USING (
     EXISTS (
-      SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
-        AND users.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+        AND profiles.role = 'admin'
     )
   );
 
+-- Profile policies
 CREATE POLICY "Users can view their own profile"
-  ON users FOR SELECT
+  ON public.profiles FOR SELECT
   TO authenticated
   USING (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
-  ON users FOR UPDATE
+  ON public.profiles FOR UPDATE
   TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can insert their own profile"
-  ON users FOR INSERT
+  ON public.profiles FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Service role can insert any profile"
+  ON public.profiles FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+CREATE POLICY "Public can select profiles"
+  ON public.profiles FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
 CREATE POLICY "Admins can manage all profiles"
-  ON users FOR ALL
+  ON public.profiles FOR ALL
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-        AND users.role = 'admin'
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.role = 'admin'
     )
   );
+
+-- Grant necessary permissions
+GRANT SELECT ON companies TO anon, authenticated;
+GRANT SELECT ON jobs TO anon, authenticated;
+GRANT SELECT ON public.profiles TO anon, authenticated;
+GRANT ALL ON applications TO authenticated;
+GRANT ALL ON public.profiles TO authenticated;
+
+-- Grant additional permissions for joins
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 
 -- Insert sample companies if none exist
 DO $$ 
@@ -229,3 +244,64 @@ BEGIN
     FROM companies WHERE name = 'DataFlow';
   END IF;
 END $$;
+
+-- Insert trigger to create profile on new user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email)
+  VALUES (new.id, new.raw_user_meta_data->>'full_name', new.email);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Create trigger for new signups
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Create the server-side function for profile creation
+CREATE OR REPLACE FUNCTION create_user_profile(
+  user_id UUID,
+  user_name TEXT,
+  user_email TEXT,
+  user_role TEXT DEFAULT 'user'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER -- This bypasses RLS
+SET search_path = public
+AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  -- Check if the profile already exists
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id) THEN
+    SELECT jsonb_build_object(
+      'id', id,
+      'name', name,
+      'email', email,
+      'role', role
+    ) INTO result
+    FROM profiles
+    WHERE id = user_id;
+    
+    RETURN result;
+  END IF;
+
+  -- Insert the new profile
+  INSERT INTO profiles (id, name, email, role)
+  VALUES (user_id, user_name, user_email, user_role)
+  RETURNING jsonb_build_object(
+    'id', id,
+    'name', name,
+    'email', email,
+    'role', role
+  ) INTO result;
+  
+  RETURN result;
+END;
+$$;
