@@ -7,18 +7,49 @@ function Home() {
   const [jobs, setJobs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [user]); // Refetch when user changes
 
   async function fetchJobs() {
     try {
+      setLoading(true);
+      console.log('Fetching jobs...');
+      
+      // Use a simpler query without joins
       const { data, error } = await supabase
         .from('jobs')
         .select(`
-          *,
-          company:companies(*)
+          id,
+          title,
+          description,
+          location,
+          type,
+          salary_range,
+          deadline,
+          created_at,
+          company_id,
+          companies (
+            id,
+            name,
+            logo_url
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -26,10 +57,23 @@ function Home() {
         console.error('Error fetching jobs:', error);
         throw error;
       }
+
       console.log('Fetched jobs:', data);
-      setJobs(data || []);
+      
+      if (!data || data.length === 0) {
+        console.log('No jobs found in the database');
+        setJobs([]);
+      } else {
+        // Transform the data to match the expected format
+        const transformedJobs = data.map(job => ({
+          ...job,
+          company: job.companies
+        }));
+        setJobs(transformedJobs);
+      }
     } catch (error) {
       console.error('Error in fetchJobs function:', error);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -72,7 +116,7 @@ function Home() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ffdde2] mx-auto"></div>
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-8 text-white">
+          <div className="text-center py-8 text-gray-700">
             <p>No jobs found matching your search criteria.</p>
           </div>
         ) : (

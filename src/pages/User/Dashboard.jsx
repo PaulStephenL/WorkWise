@@ -5,8 +5,33 @@ import { supabase } from '../../lib/supabase';
 import { Card, CardHeader, CardContent } from '../../components/ui/application-card';
 import { Badge } from '../../components/ui/badge';
 import { Skeleton } from '../../components/ui/skeleton';
-import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+
+// Add a simple date formatting function
+function formatTimeAgo(dateString) {
+  if (!dateString) return 'recently';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+  
+  const diffInYears = Math.floor(diffInMonths / 12);
+  return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
+}
 
 export default function UserDashboard() {
   const [applications, setApplications] = useState([]);
@@ -46,49 +71,52 @@ export default function UserDashboard() {
     getUser();
   }, [navigate]);
 
-  useEffect(() => {
-    async function fetchApplications() {
-      if (!user) return;
+  // Create a function to fetch applications so we can reuse it with the refresh button
+  async function fetchApplications() {
+    if (!user) return;
 
-      try {
-        setLoading(true);
-        
-        // Fetch all applications for the current user with job and company details
-        const { data, error } = await supabase
-          .from('applications')
-          .select(`
+    try {
+      setLoading(true);
+      
+      // Fetch all applications for the current user with job and company details
+      const { data, error } = await supabase
+        .from('applications')
+        .select(`
+          id,
+          status,
+          cover_letter,
+          resume_url,
+          created_at,
+          jobs (
             id,
-            status,
-            cover_letter,
-            resume_url,
-            created_at,
-            jobs (
-              id,
-              title,
-              description,
-              location,
-              type,
-              salary_range,
-              companies (
-                name,
-                logo_url
-              )
+            title,
+            description,
+            location,
+            type,
+            salary_range,
+            companies (
+              name,
+              logo_url
             )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setApplications(data || []);
-      } catch (err) {
-        console.error('Error fetching applications:', err);
-        setError('Failed to load your applications. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
+      if (error) throw error;
+      setApplications(data || []);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+      setError('Failed to load your applications. Please try again later.');
+    } finally {
+      setLoading(false);
     }
+  }
 
-    fetchApplications();
+  useEffect(() => {
+    if (user) {
+      fetchApplications();
+    }
   }, [user]);
 
   // Function to get status badge color
@@ -117,7 +145,25 @@ export default function UserDashboard() {
 
   return (
     <div className="container mx-auto p-4 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-6">My Applications</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">My Applications</h1>
+        <button 
+          onClick={fetchApplications}
+          disabled={loading}
+          className="px-4 py-2 bg-[#101d42] text-white rounded hover:bg-opacity-90 transition flex items-center"
+        >
+          {loading ? (
+            <span>Refreshing...</span>
+          ) : (
+            <>
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </>
+          )}
+        </button>
+      </div>
       
       {applications.length === 0 ? (
         <div className="text-center p-10 bg-gray-50 rounded-lg">
@@ -209,13 +255,13 @@ function ApplicationCard({ application, statusColor }) {
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Applied {application.created_at ? formatDistanceToNow(new Date(application.created_at)) + ' ago' : 'recently'}
+            Applied {formatTimeAgo(application.created_at)}
           </div>
         </div>
         <div className="mt-4 flex justify-between">
-          <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+          <a href={`/jobs/${job.id}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
             View Details
-          </button>
+          </a>
           {application.status === 'pending' && (
             <button className="text-sm text-red-600 hover:text-red-800 font-medium">
               Withdraw
