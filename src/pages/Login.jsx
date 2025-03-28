@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, checkAndVerifyAdminRole, createUserProfile } from '../lib/supabase';
 import { Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
 function Login() {
@@ -38,24 +38,62 @@ function Login() {
       if (!data.user) throw new Error('No user returned from login');
 
       try {
-        // Then fetch the user's role
+        // Use the dedicated helper function to check admin role
+        // This will not create profiles automatically
+        const isAdmin = await checkAndVerifyAdminRole(data.user.id);
+        console.log('Is admin check result:', isAdmin);
+        
+        if (isAdmin) {
+          console.log('Admin user confirmed, redirecting to admin dashboard');
+          navigate('/admin');
+          return;
+        }
+        
+        // If not admin, fetch user data to check role as a backup
         const { data: userData, error: userError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single();
 
+        console.log('User ID:', data.user.id);
+        console.log('User data from profiles table:', userData);
+
         if (userError) {
           console.error('Error fetching user role:', userError);
+          
+          // Check if this is a "no rows" error, meaning profile doesn't exist
+          if (userError.code === 'PGRST116' || userError.message?.includes('no rows')) {
+            console.log('Profile does not exist for this user');
+            setError('Your account is missing a profile. Please contact an administrator or use the Admin Utilities below to create one.');
+            setLoading(false);
+            return;
+          }
+          
           // If we can't get the role, log the error but still navigate to dashboard
           // This prevents 500 errors from blocking the UI
           navigate('/user/dashboard');
           return;
         }
 
-        // Navigate based on role
+        // Navigate based on role (this is a backup in case the helper function didn't work)
         if (userData && userData.role) {
-          navigate(userData.role === 'admin' ? '/admin' : '/user/dashboard');
+          console.log('User role found:', userData.role);
+          console.log('Role type:', typeof userData.role);
+          console.log('Role length:', userData.role.length);
+          // More robust comparison - trim whitespace and ensure case-insensitive
+          const normalizedRole = userData.role.toString().trim().toLowerCase();
+          console.log('Normalized role:', normalizedRole);
+          console.log('Comparison result:', normalizedRole === 'admin');
+          
+          if (normalizedRole === 'admin') {
+            console.log('Admin user detected, redirecting to admin dashboard');
+            navigate('/admin');
+          } else {
+            // For all other roles, go to user dashboard
+            console.log('Non-admin role detected:', normalizedRole);
+            navigate('/user/dashboard');
+          }
         } else {
           console.warn('User role not found, defaulting to user dashboard');
           navigate('/user/dashboard');
