@@ -1,0 +1,15 @@
+├── Dashboard/
+│   └── DashboardPage.jsx         # Simple overview of key metrics
+├── Users/
+│   ├── UsersList.jsx             # List users, edit roles
+│   └── UserDetails.jsx           # View/Edit user details
+├── Companies/
+│   ├── CompaniesList.jsx         # List all companies
+│   └── CompanyDetails.jsx        # View/Edit company details
+├── Jobs/
+│   ├── JobsList.jsx              # List all jobs
+│   └── JobDetails.jsx            # View/Edit job details
+├── Applications/
+│   └── ApplicationsList.jsx      # List and manage applications
+└── Layout/
+    └── AdminLayout.jsx           # Basic admin layout with navigation 

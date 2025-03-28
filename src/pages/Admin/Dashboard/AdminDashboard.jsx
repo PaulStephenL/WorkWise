@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, checkAndVerifyAdminRole } from '../../../lib/supabase';
 import { Briefcase, Building2, Users, LayoutDashboard, MapPin } from 'lucide-react';
 
 function AdminDashboard() {
@@ -18,11 +18,83 @@ function AdminDashboard() {
   }, []);
 
   async function checkAdmin() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.role !== 'admin') {
+    try {
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        navigate('/login');
+        return;
+      }
+      
+      console.log('AdminDashboard checkAdmin - User:', user?.id);
+      
+      if (!user) {
+        // No authenticated user - redirect to login
+        console.error('No authenticated user found');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Checking admin role for user:', user.id);
+      
+      // Use the helper function for consistent admin checking
+      const isAdmin = await checkAndVerifyAdminRole(user.id);
+      console.log('Admin dashboard - isAdmin check result:', isAdmin);
+      
+      // If not admin, let's get the current role for debugging
+      if (!isAdmin) {
+        // Get the role directly one more time for confirmation
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error fetching profile for confirmation:', profileError);
+        } else {
+          console.log('Profile data confirmation:', profileData);
+          console.log('Role from confirmation:', profileData?.role);
+          
+          // Let's try a direct approach to fix the role
+          if (profileData && profileData.role && profileData.role.toString().trim().toLowerCase() === 'admin') {
+            // The role is admin when trimmed but not being detected properly
+            console.log('Role is admin when trimmed. Attempting direct fix...');
+            const { error: fixError } = await supabase
+              .from('profiles')
+              .update({ role: 'admin' })
+              .eq('id', user.id);
+            
+            if (fixError) {
+              console.error('Error fixing role:', fixError);
+            } else {
+              console.log('Successfully fixed role. Trying admin check again...');
+              // Try the check one more time
+              const isAdminAfterFix = await checkAndVerifyAdminRole(user.id);
+              console.log('Admin check after fix:', isAdminAfterFix);
+              
+              if (isAdminAfterFix) {
+                // Success! Continue loading the dashboard
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        }
+        
+        console.error('User is not an admin, redirecting to home');
+        navigate('/');
+        return;
+      }
+      
+      // User is admin, continue loading
+      setLoading(false);
+    } catch (error) {
+      console.error('Error in admin check:', error);
       navigate('/');
     }
-    setLoading(false);
   }
 
   async function fetchStats() {
