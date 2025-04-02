@@ -248,6 +248,28 @@ function AdminJobs() {
     }
   }
 
+  async function handleDelete(id) {
+    if (!confirm('Are you sure you want to delete this job?')) return;
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Refresh the job list after deletion
+      fetchJobs();
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      alert('Error deleting job. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -299,7 +321,12 @@ function AdminJobs() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <Link to={`/admin/jobs/${job.id}`} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</Link>
-                  <button className="text-red-600 hover:text-red-900">Delete</button>
+                  <button 
+                    onClick={() => handleDelete(job.id)} 
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
