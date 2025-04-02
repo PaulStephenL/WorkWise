@@ -12,6 +12,8 @@ import AdminDashboard from './pages/Admin/Dashboard/AdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { supabase, createUserProfile } from './lib/supabase';
 import Dashboard from './pages/User/Dashboard';
+import Profile from './pages/User/Profile';
+import CompanyDetails from './pages/User/CompanyDetails';
 
 // Auth callback component
 function AuthCallback() {
@@ -197,8 +199,13 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin/*" element={<AdminDashboard />} />
-            <Route path="/user/dashboard" element={<Dashboard />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            {/* User Routes */}
+            <Route path="/user/dashboard" element={<Dashboard />} />
+            <Route path="/user/profile" element={<Profile />} />
+            <Route path="/companies/:id" element={<CompanyDetails />} />
+            <Route path="/jobs/:id" element={<JobDetails />} />
           </Routes>
         </main>
         <Footer />
