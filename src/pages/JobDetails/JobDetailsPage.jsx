@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Briefcase, Calendar, DollarSign, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
-function JobDetails() {
+function JobDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
@@ -194,22 +194,29 @@ function JobDetails() {
           </div>
         )}
 
-        {userRole === 'admin' ? (
-          <div className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 text-center">
-            Admin users cannot apply for jobs
-          </div>
-        ) : (
-          <button
-            onClick={handleApply}
-            disabled={hasApplied || applying}
-            className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#101d42] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101d42] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {hasApplied ? 'Application Submitted' : applying ? 'Applying...' : 'Apply Now'}
-          </button>
-        )}
+        <div className="text-center">
+          {hasApplied ? (
+            <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-md font-medium">
+              <CheckCircle className="inline-block h-5 w-5 mr-2" />
+              You have already applied for this job
+            </div>
+          ) : userRole === 'admin' ? (
+            <div className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 text-center">
+              Admin users cannot apply for jobs
+            </div>
+          ) : (
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#101d42] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101d42] disabled:opacity-50"
+            >
+              {applying ? 'Applying...' : 'Apply Now'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default JobDetails;
+export default JobDetailsPage; 
