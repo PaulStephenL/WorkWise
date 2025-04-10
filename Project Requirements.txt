@@ -1,0 +1,159 @@
+ WorkWise Job Portal - Project Requirements
+
+ 1. Project Overview
+
+WorkWise is a modern job portal web application that connects job seekers with employers. The platform allows companies to post job listings and manage applications, while job seekers can search for jobs, create profiles, and apply to positions. The system features role-based access control with separate interfaces for regular users and administrators.
+
+ 2. User Roles and Permissions
+
+ 2.1 Anonymous Users
+- View the landing page and basic information about the portal
+- Browse job listings and company information
+- Create an account and log in
+- View the About and Contact pages
+
+ 2.2 Authenticated Users (Job Seekers)
+- Create and maintain a personal profile with resume upload
+- Browse and search job listings
+- Apply to job positions
+- Track application status
+- View company details
+- Manage and view their own job applications
+
+ 2.3 Administrators
+- Manage all job listings (create, read, update, delete)
+- Manage all companies (create, read, update, delete)
+- View and process job applications from users
+- View system statistics and dashboard
+- Manage user accounts
+
+ 3. Technical Requirements
+
+ 3.1 Frontend
+- React.js with hooks for state management
+- React Router for navigation and routing
+- Tailwind CSS for styling with responsive design
+- Vite as the build tool and development server
+- UI components from Radix UI and custom components
+- Framer Motion for animations and transitions
+
+ 3.2 Backend
+- Supabase for backend services (authentication, database, storage)
+- PostgreSQL database hosted on Supabase
+- Row-Level Security (RLS) policies for data protection
+- Supabase Auth for user authentication and management
+
+ 3.3 Database Schema
+- **profiles**: User information linked to Supabase Auth
+- **companies**: Company details including name, description, logo, location
+- **company_admins**: Relationship between companies and admin users
+- **jobs**: Job listings with details such as title, description, qualifications, salary
+- **applications**: Job applications submitted by users
+
+ 4. Functional Requirements
+
+ 4.1 User Authentication
+- Email/password authentication
+- Email verification for new accounts
+- Password reset functionality
+- User session management
+
+ 4.2 User Profile Management
+- Create and update personal profile
+- Upload and manage resume
+- View application history
+
+ 4.3 Job Management
+- Browse job listings with filtering options
+- View detailed job information
+- Apply to jobs with cover letter and resume
+- Track application status (pending, interviewing, accepted, rejected)
+
+ 4.4 Company Management (Admin)
+- Create and manage company profiles
+- Upload company logos
+- Add company descriptions and details
+
+ 4.5 Application Management (Admin)
+- View all job applications
+- Update application status
+- Communicate with applicants
+
+ 4.6 Dashboard and Analytics (Admin)
+- View statistics on jobs, applications, and companies
+- Monitor user activity and engagement
+
+ 5. Non-Functional Requirements
+
+ 5.1 Performance
+- Fast page loading times
+- Responsive UI that works across different screen sizes
+- Optimized database queries for quick data retrieval
+
+ 5.2 Security
+- Row-Level Security (RLS) for database access control
+- Secure authentication with Supabase Auth
+- Protection against common web vulnerabilities (XSS, CSRF)
+- Secure handling of user data and resumes
+
+ 5.3 Usability
+- Intuitive and modern user interface
+- Clear navigation and information architecture
+- Accessible design following best practices
+- Meaningful feedback for user actions
+
+ 5.4 Scalability
+- Database design that accommodates growth
+- Efficient data management for increased user load
+- Component-based architecture for maintainability
+
+ 6. User Interface Requirements
+
+ 6.1 Public Pages
+- Landing page with introduction to the platform
+- About page with information about the service
+- Contact page with communication form
+- Job listing pages with search and filter functionality
+- Login and signup pages
+
+ 6.2 User Dashboard
+- Application tracking and management
+- Profile management interface
+- Job search and application process
+
+ 6.3 Admin Dashboard
+- Statistics overview with key metrics
+- Job management interface
+- Company management interface
+- Application processing interface
+- User management tools
+
+ 7. Data Requirements
+
+ 7.1 User Data
+- Personal information (name, email)
+- Professional information (resume, qualifications)
+- Application history
+
+ 7.2 Job Data
+- Title, description, company, location, type
+- Qualifications, salary range, application deadline
+- Associated company information
+
+ 7.3 Company Data
+- Name, description, logo, location
+- Job listings associated with the company
+
+ 7.4 Application Data
+- Linked job and user references
+- Status tracking (pending, interviewing, accepted, rejected)
+- Cover letter and resume attachments
+
+ 8. Deployment Requirements
+
+- Hosting on a secure web server
+- Integration with Supabase services
+- Environment configuration for development and production
+- Continuous integration/deployment workflows
+
+This document outlines the comprehensive requirements for the WorkWise Job Portal web application, providing a clear roadmap for development, testing, and deployment.

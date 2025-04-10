@@ -1,22 +1,60 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Briefcase, Calendar, DollarSign, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
-function JobDetails() {
+function JobDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
-  const [user] = useState(supabase.auth.getUser());
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [hasApplied, setHasApplied] = useState(false);
 
   useEffect(() => {
     fetchJob();
-    checkApplication();
+    fetchUserAndRole();
   }, [id]);
+
+  useEffect(() => {
+    // Check application only after we have user info
+    if (user && id) {
+      checkApplication();
+    }
+  }, [user, id]);
+
+  async function fetchUserAndRole() {
+    try {
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        return;
+      }
+      
+      if (currentUser) {
+        setUser(currentUser);
+        
+        // Fetch user role from profiles
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (profileError) {
+          console.error('Error fetching user role:', profileError);
+        } else if (profileData) {
+          setUserRole(profileData.role || 'user');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user and role:', error);
+    }
+  }
 
   async function fetchJob() {
     try {
@@ -42,14 +80,13 @@ function JobDetails() {
 
   async function checkApplication() {
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user || !id) return;
+      if (!user || !id) return;
 
       const { data, error } = await supabase
         .from('applications')
         .select('id')
         .eq('job_id', id)
-        .eq('user_id', user.data.user.id)
+        .eq('user_id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -61,9 +98,14 @@ function JobDetails() {
 
   async function handleApply() {
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) {
+      if (!user) {
         navigate('/login');
+        return;
+      }
+      
+      // Prevent admin users from applying
+      if (userRole === 'admin') {
+        setError("Admin users cannot apply for jobs");
         return;
       }
 
@@ -72,7 +114,7 @@ function JobDetails() {
         .from('applications')
         .insert({
           job_id: id,
-          user_id: user.data.user.id,
+          user_id: user.id,
           status: 'pending'
         });
 
@@ -152,16 +194,29 @@ function JobDetails() {
           </div>
         )}
 
-        <button
-          onClick={handleApply}
-          disabled={hasApplied || applying}
-          className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#101d42] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101d42] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {hasApplied ? 'Application Submitted' : applying ? 'Applying...' : 'Apply Now'}
-        </button>
+        <div className="text-center">
+          {hasApplied ? (
+            <div className="inline-block px-6 py-3 bg-green-100 text-green-800 rounded-md font-medium">
+              <CheckCircle className="inline-block h-5 w-5 mr-2" />
+              You have already applied for this job
+            </div>
+          ) : userRole === 'admin' ? (
+            <div className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 text-center">
+              Admin users cannot apply for jobs
+            </div>
+          ) : (
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#101d42] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#101d42] disabled:opacity-50"
+            >
+              {applying ? 'Applying...' : 'Apply Now'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default JobDetails;
+export default JobDetailsPage; 
