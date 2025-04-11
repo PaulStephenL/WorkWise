@@ -1,4 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase';
+import { toast } from 'react-hot-toast';
+
+const ApplicationsList = () => {
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingStatuses, setUpdatingStatuses] = useState({});
+  const [error, setError] = useState(null);
 
 const ApplicationsList = () => {
   const [applications, setApplications] = useState([]);
