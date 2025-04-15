@@ -4,6 +4,8 @@ import { supabase, checkAndVerifyAdminRole } from '../../../lib/supabase';
 import { Briefcase, Building2, Users, LayoutDashboard, MapPin } from 'lucide-react';
 import JobsList from '../Jobs/JobsList';
 import JobDetails from '../Jobs/JobDetails';
+import CompaniesList from '../Companies/CompaniesList';
+import CompanyDetails from '../Companies/CompanyDetails';
 import ApplicationsList from '../Applications/ApplicationsList';
 import ApplicationDetails from '../Applications/ApplicationDetails';
 import { toast } from 'react-hot-toast';
