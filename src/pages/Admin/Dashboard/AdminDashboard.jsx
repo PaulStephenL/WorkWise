@@ -207,7 +207,9 @@ function AdminDashboard() {
             <Route index element={<AdminOverview stats={stats} />} />
             <Route path="jobs" element={<JobsList />} />
             <Route path="jobs/:id" element={<JobDetails />} />
-            <Route path="companies" element={<AdminCompanies />} />
+            <Route path="companies" element={<CompaniesList />} />
+            <Route path="companies/new" element={<CompanyDetails />} />
+            <Route path="companies/:id" element={<CompanyDetails />} />
             <Route path="applications" element={<ApplicationsList />} />
             <Route path="applications/:id" element={<ApplicationDetails />} />
           </Routes>
@@ -228,70 +230,70 @@ function AdminOverview({ stats }) {
   );
 }
 
-function AdminCompanies() {
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+// function AdminCompanies() {
+//   const [companies, setCompanies] = useState([]);
+//   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchCompanies();
-  }, []);
+//   useEffect(() => {
+//     fetchCompanies();
+//   }, []);
 
-  async function fetchCompanies() {
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('name');
+//   async function fetchCompanies() {
+//     try {
+//       const { data, error } = await supabase
+//         .from('companies')
+//         .select('*')
+//         .order('name');
 
-      if (error) throw error;
-      setCompanies(data || []);
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+//       if (error) throw error;
+//       setCompanies(data || []);
+//     } catch (error) {
+//       console.error('Error fetching companies:', error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   }
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+//   if (loading) {
+//     return <div>Loading...</div>;
+//   }
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Companies</h2>
-        <button className="bg-[#101d42] text-white px-4 py-2 rounded hover:bg-opacity-90">
-          Add New Company
-        </button>
-      </div>
+//   return (
+//     <div>
+//       <div className="flex justify-between items-center mb-6">
+//         <h2 className="text-2xl font-bold">Companies</h2>
+//         <button className="bg-[#101d42] text-white px-4 py-2 rounded hover:bg-opacity-90">
+//           Add New Company
+//         </button>
+//       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {companies.map((company) => (
-          <div key={company.id} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center mb-4">
-              {company.logo_url && (
-                <img
-                  src={company.logo_url}
-                  alt={company.name}
-                  className="w-12 h-12 rounded object-cover mr-4"
-                />
-              )}
-              <h3 className="text-lg font-semibold">{company.name}</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">{company.description}</p>
-            <div className="flex items-center text-sm text-gray-500">
-              <MapPin className="h-4 w-4 mr-1" />
-              {company.location}
-            </div>
-            <div className="mt-4 flex justify-end space-x-2">
-              <button className="text-indigo-600 hover:text-indigo-900">Edit</button>
-              <button className="text-red-600 hover:text-red-900">Delete</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+//         {companies.map((company) => (
+//           <div key={company.id} className="bg-white rounded-lg shadow p-6">
+//             <div className="flex items-center mb-4">
+//               {company.logo_url && (
+//                 <img
+//                   src={company.logo_url}
+//                   alt={company.name}
+//                   className="w-12 h-12 rounded object-cover mr-4"
+//                 />
+//               )}
+//               <h3 className="text-lg font-semibold">{company.name}</h3>
+//             </div>
+//             <p className="text-gray-600 text-sm mb-4">{company.description}</p>
+//             <div className="flex items-center text-sm text-gray-500">
+//               <MapPin className="h-4 w-4 mr-1" />
+//               {company.location}
+//             </div>
+//             <div className="mt-4 flex justify-end space-x-2">
+//               <button className="text-indigo-600 hover:text-indigo-900">Edit</button>
+//               <button className="text-red-600 hover:text-red-900">Delete</button>
+//             </div>
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
 
 export default AdminDashboard;
