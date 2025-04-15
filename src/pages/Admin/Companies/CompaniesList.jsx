@@ -79,9 +79,10 @@ function CompaniesList() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Companies</h1>
-      <Link to="/admin/companies/new" className="bg-blue-500 text-white px-4 py-2 rounded mb-4 inline-block">
-        Add Company
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Companies</h2>
+        <Link to="/admin/companies/new" className="bg-[#101d42] text-white px-4 py-2 rounded hover:bg-opacity-90">
+          Add New Company
       </Link>
       <table className="min-w-full bg-white">
         <thead>
