@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/application-c
 import { Badge } from '../../components/ui/badge';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 // Add a simple date formatting function
 function formatTimeAgo(dateString) {
@@ -38,6 +39,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -135,6 +137,35 @@ export default function UserDashboard() {
     }
   };
 
+  // Add withdrawApplication function
+  async function withdrawApplication(applicationId) {
+    if (!user || !applicationId) return;
+
+    try {
+      setWithdrawing(applicationId);
+      
+      // Delete the application
+      const { error: deleteError } = await supabase
+        .from('applications')
+        .delete()
+        .eq('id', applicationId);
+
+      if (deleteError) throw deleteError;
+
+      // Remove the application from the local state
+      setApplications(prevApplications => 
+        prevApplications.filter(app => app.id !== applicationId)
+      );
+
+      toast.success('Application withdrawn successfully');
+    } catch (err) {
+      console.error('Error withdrawing application:', err);
+      toast.error('Failed to withdraw application. Please try again.');
+    } finally {
+      setWithdrawing(null);
+    }
+  }
+
   if (loading) {
     return <ApplicationsSkeleton />;
   }
@@ -185,6 +216,8 @@ export default function UserDashboard() {
               key={application.id} 
               application={application} 
               statusColor={getStatusColor(application.status)}
+              withdrawing={withdrawing}
+              onWithdraw={withdrawApplication}
             />
           ))}
         </div>
@@ -193,7 +226,7 @@ export default function UserDashboard() {
   );
 }
 
-function ApplicationCard({ application, statusColor }) {
+function ApplicationCard({ application, statusColor, withdrawing, onWithdraw }) {
   // Check if job data exists and has the expected format
   if (!application || !application.jobs) {
     return (
@@ -263,8 +296,16 @@ function ApplicationCard({ application, statusColor }) {
             View Details
           </a>
           {application.status === 'pending' && (
-            <button className="text-sm text-red-600 hover:text-red-800 font-medium">
-              Withdraw
+            <button 
+              onClick={() => {
+                if (window.confirm('Are you sure you want to withdraw this application?')) {
+                  onWithdraw(application.id);
+                }
+              }}
+              disabled={withdrawing === application.id}
+              className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {withdrawing === application.id ? 'Withdrawing...' : 'Withdraw'}
             </button>
           )}
         </div>
